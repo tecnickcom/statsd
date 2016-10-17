@@ -28,7 +28,7 @@ DOCKERDEV=${VENDOR}/dev_${PROJECT}
 docker build -t ${DOCKERDEV} ./resources/DockerDev/
 
 # Define the project root path
-PRJPATH=/root/src/${PROJECT}
+PRJPATH=/root/src/github.com/${VENDOR}/${PROJECT}
 
 # Generate a temporary Dockerfile to build and test the project
 # NOTE: The exit status of the RUN command is stored to be returned later,
