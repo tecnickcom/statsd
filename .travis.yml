@@ -1,9 +1,5 @@
 language: go
 
-dist: trusty
-
-sudo: true
-
 branches:
   except:
     - release
@@ -23,10 +19,12 @@ matrix:
     - go: tip
 
 before_install:
-  - sudo apt-get update || true
   - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
   - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
   - go get github.com/mattn/goveralls
+
+before_script:
+  - make deps
 
 script:
   - make dbuild
