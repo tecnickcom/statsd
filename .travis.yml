@@ -1,5 +1,9 @@
 language: go
 
+dist: trusty
+
+sudo: true
+
 branches:
   except:
     - release
@@ -24,11 +28,8 @@ before_install:
   - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
   - go get github.com/mattn/goveralls
 
-before_script:
-  - make deps
-
 script:
-  - make qa
+  - make dbuild
 
 after_failure:
   - cat ./target/test/report.xml
