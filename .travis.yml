@@ -1,9 +1,5 @@
 language: go
 
-dist: trusty
-
-sudo: true
-
 branches:
   except:
     - release
