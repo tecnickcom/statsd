@@ -11,6 +11,7 @@
 * **copyright**   2015 Alexandre Cesaro, 2016 Nicola Asuni - Tecnick.com
 * **license**     MIT (see LICENSE)
 * **link**        https://github.com/tecnickcom/statsd
+* **docs**        https://godoc.org/github.com/tecnickcom/statsd
 
 
 ## Description
