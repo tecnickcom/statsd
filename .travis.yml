@@ -27,7 +27,7 @@ before_script:
   - make deps
 
 script:
-  - make dbuild
+  - make qa
 
 after_failure:
   - cat ./target/test/report.xml
