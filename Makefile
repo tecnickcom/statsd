@@ -81,7 +81,6 @@ all: help
 # Run the unit tests
 test:
 	@mkdir -p target/test
-	@mkdir -p target/report
 	GOPATH=$(GOPATH) \
 	go test -covermode=atomic -bench=. -race -v ./... | \
 	tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > target/test/report.xml); \
@@ -107,6 +106,7 @@ lint:
 
 # Generate the coverage report
 coverage:
+	@mkdir -p target/report
 	GOPATH=$(GOPATH) \
 	go test -covermode=count -coverprofile=target/report/coverage.out && \
 	go tool cover -html=target/report/coverage.out -o target/report/coverage.html
