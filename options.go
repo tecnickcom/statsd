@@ -216,11 +216,11 @@ var (
 				if first {
 					first = false
 				} else {
-					_ = buf.WriteByte(',')
+					_ = buf.WriteByte(',') // #nosec
 				}
-				_, _ = buf.WriteString(tag.K)
-				_ = buf.WriteByte(':')
-				_, _ = buf.WriteString(tag.V)
+				_, _ = buf.WriteString(tag.K) // #nosec
+				_ = buf.WriteByte(':')        // #nosec
+				_, _ = buf.WriteString(tag.V) // #nosec
 			}
 			return buf.String()
 		},
