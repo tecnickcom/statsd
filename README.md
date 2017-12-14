@@ -5,6 +5,7 @@
 [![Master Build Status](https://secure.travis-ci.org/tecnickcom/statsd.png?branch=master)](https://travis-ci.org/tecnickcom/statsd?branch=master)
 [![Master Coverage Status](https://coveralls.io/repos/tecnickcom/statsd/badge.svg?branch=master&service=github)](https://coveralls.io/github/tecnickcom/statsd?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tecnickcom/statsd)](https://goreportcard.com/report/github.com/tecnickcom/statsd)
+[![GoDoc](https://godoc.org/github.com/tecnickcom/statsd?status.svg)](https://godoc.org/github.com/tecnickcom/statsd)
 
 * **category**    Library
 * **author**      Alexandre Cesaro, Nicola Asuni <info@tecnick.com>
