@@ -155,23 +155,23 @@ func isNegative(v interface{}) bool {
 	case int:
 		return n < 0
 	case uint:
-		return n < 0
+		return false
 	case int64:
 		return n < 0
 	case uint64:
-		return n < 0
+		return false
 	case int32:
 		return n < 0
 	case uint32:
-		return n < 0
+		return false
 	case int16:
 		return n < 0
 	case uint16:
-		return n < 0
+		return false
 	case int8:
 		return n < 0
 	case uint8:
-		return n < 0
+		return false
 	case float64:
 		return n < 0
 	case float32:
