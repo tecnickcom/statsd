@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+// Stubbed out for testing.
+//
+//nolint:gochecknoglobals
+var (
+	dialTimeout = net.DialTimeout
+	now         = time.Now
+	randFloat   = rand.Float32
+)
+
 type conn struct {
 	// Fields settable with options at Client's creation.
 	addr          string
@@ -17,8 +26,8 @@ type conn struct {
 	maxPacketSize int
 	network       string
 	tagFormat     TagFormat
+	mu            sync.Mutex
 
-	mu sync.Mutex
 	// Fields guarded by the mutex.
 	closed    bool
 	w         io.WriteCloser
@@ -41,6 +50,7 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 	}
 
 	var err error
+
 	c.w, err = dialTimeout(c.network, c.addr, 5*time.Second)
 	if err != nil {
 		return c, err
@@ -55,11 +65,14 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 			ticker := time.NewTicker(c.flushPeriod)
 			for range ticker.C {
 				c.mu.Lock()
+
 				if c.closed {
 					ticker.Stop()
 					c.mu.Unlock()
+
 					return
 				}
+
 				c.flush(0)
 				c.mu.Unlock()
 			}
@@ -71,7 +84,9 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 
 func (c *conn) metric(prefix, bucket string, n interface{}, typ string, rate float32, tags string) {
 	c.mu.Lock()
+
 	l := len(c.buf)
+
 	c.appendBucket(prefix, bucket, tags)
 	c.appendNumber(n)
 	c.appendType(typ)
@@ -83,13 +98,16 @@ func (c *conn) metric(prefix, bucket string, n interface{}, typ string, rate flo
 
 func (c *conn) gauge(prefix, bucket string, value interface{}, tags string) {
 	c.mu.Lock()
+
 	l := len(c.buf)
+
 	// To set a gauge to a negative value we must first set it to 0.
 	// https://github.com/etsy/statsd/blob/master/docs/metric_types.md#gauges
 	if isNegative(value) {
 		c.appendBucket(prefix, bucket, tags)
 		c.appendGauge(0, tags)
 	}
+
 	c.appendBucket(prefix, bucket, tags)
 	c.appendGauge(value, tags)
 	c.flushIfBufferFull(l)
@@ -121,6 +139,7 @@ func (c *conn) appendString(s string) {
 	c.buf = append(c.buf, s...)
 }
 
+//nolint:gocyclo,cyclop
 func (c *conn) appendNumber(v interface{}) {
 	switch n := v.(type) {
 	case int:
@@ -150,6 +169,7 @@ func (c *conn) appendNumber(v interface{}) {
 	}
 }
 
+//nolint:gocyclo,cyclop
 func isNegative(v interface{}) bool {
 	switch n := v.(type) {
 	case int:
@@ -177,15 +197,18 @@ func isNegative(v interface{}) bool {
 	case float32:
 		return n < 0
 	}
+
 	return false
 }
 
 func (c *conn) appendBucket(prefix, bucket string, tags string) {
 	c.appendString(prefix)
 	c.appendString(bucket)
+
 	if c.tagFormat == InfluxDB {
 		c.appendString(tags)
 	}
+
 	c.appendByte(':')
 }
 
@@ -198,11 +221,13 @@ func (c *conn) appendRate(rate float32) {
 	if rate == 1 {
 		return
 	}
+
 	if c.rateCache == nil {
 		c.rateCache = make(map[float32]string)
 	}
 
 	c.appendString("|@")
+
 	if s, ok := c.rateCache[rate]; ok {
 		c.appendString(s)
 	} else {
@@ -216,6 +241,7 @@ func (c *conn) closeMetric(tags string) {
 	if c.tagFormat == Datadog {
 		c.appendString(tags)
 	}
+
 	c.appendByte('\n')
 }
 
@@ -231,16 +257,20 @@ func (c *conn) flush(n int) {
 	if len(c.buf) == 0 {
 		return
 	}
+
 	if n == 0 {
 		n = len(c.buf)
 	}
 
 	// Trim the last \n, StatsD does not like it.
 	_, err := c.w.Write(c.buf[:n-1])
+
 	c.handleError(err)
+
 	if n < len(c.buf) {
 		copy(c.buf, c.buf[n:])
 	}
+
 	c.buf = c.buf[:len(c.buf)-n]
 }
 
@@ -249,10 +279,3 @@ func (c *conn) handleError(err error) {
 		c.errorHandler(err)
 	}
 }
-
-// Stubbed out for testing.
-var (
-	dialTimeout = net.DialTimeout
-	now         = time.Now
-	randFloat   = rand.Float32
-)

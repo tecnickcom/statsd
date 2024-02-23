@@ -1,21 +1,12 @@
-language: go
+os: linux
 
-branches:
-  except:
-    - release
+dist: bionic
+
+sudo: required
 
 branches:
   only:
-    - master
-    - develop
-
-go:
-  - '1.11.1'
-  - tip
-
-matrix:
-  allow_failures:
-    - go: tip
+    - main
 
 before_install:
   - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
@@ -32,4 +23,4 @@ after_failure:
   - cat ./target/test/report.xml
 
 after_success:
-  - if [ "$TRAVIS_GO_VERSION" = "1.11.1" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;
+  - if [ "$TRAVIS_GO_VERSION" = "1.22" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;

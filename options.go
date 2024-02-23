@@ -27,9 +27,23 @@ type connConfig struct {
 	TagFormat     TagFormat
 }
 
+type joinFn = func([]tag) string
+
+type splitFn = func(string) []tag
+
 // An Option represents an option for a Client. It must be used as an
 // argument to New() or Client.Clone().
 type Option func(*config)
+
+const (
+	// InfluxDB tag format.
+	// See https://influxdb.com/blog/2015/11/03/getting_started_with_influx_statsd.html
+	InfluxDB TagFormat = iota + 1
+
+	// Datadog tag format.
+	// See http://docs.datadoghq.com/guides/metrics/#tags
+	Datadog
+)
 
 // Address sets the address of the StatsD daemon.
 //
@@ -131,6 +145,8 @@ func TagsFormat(tf TagFormat) Option {
 //
 // If the format of tags have not been set using the TagsFormat option, the tags
 // will be ignored.
+//
+//nolint:gocognit
 func Tags(tags ...string) Option {
 	if len(tags)%2 != 0 {
 		panic("statsd: Tags only accepts an even number of arguments")
@@ -148,12 +164,14 @@ func Tags(tags ...string) Option {
 
 		for _, newTag := range newTags {
 			exists := false
+
 			for _, oldTag := range c.Client.Tags {
 				if newTag.K == oldTag.K {
 					exists = true
 					oldTag.V = newTag.V
 				}
 			}
+
 			if !exists {
 				c.Client.Tags = append(c.Client.Tags, tag{
 					K: newTag.K,
@@ -172,7 +190,9 @@ func joinTags(tf TagFormat, tags []tag) string {
 	if len(tags) == 0 || tf == 0 {
 		return ""
 	}
-	join := joinFuncs[tf]
+
+	join := joinFuncs(tf)
+
 	return join(tags)
 }
 
@@ -180,31 +200,26 @@ func splitTags(tf TagFormat, tags string) []tag {
 	if len(tags) == 0 || tf == 0 {
 		return nil
 	}
-	split := splitFuncs[tf]
+
+	split := splitFuncs(tf)
+
 	return split(tags)
 }
 
-const (
-	// InfluxDB tag format.
-	// See https://influxdb.com/blog/2015/11/03/getting_started_with_influx_statsd.html
-	InfluxDB TagFormat = iota + 1
-	// Datadog tag format.
-	// See http://docs.datadoghq.com/guides/metrics/#tags
-	Datadog
-)
-
-var (
-	joinFuncs = map[TagFormat]func([]tag) string{
+func joinFuncs(tf TagFormat) joinFn {
+	jfn := map[TagFormat]joinFn{
 		// InfluxDB tag format: ,tag1=payroll,region=us-west
 		// https://influxdb.com/blog/2015/11/03/getting_started_with_influx_statsd.html
 		InfluxDB: func(tags []tag) string {
 			var buf bytes.Buffer
+
 			for _, tag := range tags {
 				_ = buf.WriteByte(',')
 				_, _ = buf.WriteString(tag.K)
 				_ = buf.WriteByte('=')
 				_, _ = buf.WriteString(tag.V)
 			}
+
 			return buf.String()
 		},
 		// Datadog tag format: |#tag1:value1,tag2:value2
@@ -212,39 +227,53 @@ var (
 		Datadog: func(tags []tag) string {
 			buf := bytes.NewBufferString("|#")
 			first := true
+
 			for _, tag := range tags {
 				if first {
 					first = false
 				} else {
 					_ = buf.WriteByte(',') // #nosec
 				}
+
 				_, _ = buf.WriteString(tag.K) // #nosec
 				_ = buf.WriteByte(':')        // #nosec
 				_, _ = buf.WriteString(tag.V) // #nosec
 			}
+
 			return buf.String()
 		},
 	}
-	splitFuncs = map[TagFormat]func(string) []tag{
+
+	return jfn[tf]
+}
+
+func splitFuncs(tf TagFormat) splitFn {
+	sfn := map[TagFormat]splitFn{
 		InfluxDB: func(s string) []tag {
 			s = s[1:]
 			pairs := strings.Split(s, ",")
 			tags := make([]tag, len(pairs))
+
 			for i, pair := range pairs {
 				kv := strings.Split(pair, "=")
 				tags[i] = tag{K: kv[0], V: kv[1]}
 			}
+
 			return tags
 		},
 		Datadog: func(s string) []tag {
 			s = s[2:]
 			pairs := strings.Split(s, ",")
 			tags := make([]tag, len(pairs))
+
 			for i, pair := range pairs {
 				kv := strings.Split(pair, ":")
 				tags[i] = tag{K: kv[0], V: kv[1]}
 			}
+
 			return tags
 		},
 	}
-)
+
+	return sfn[tf]
+}

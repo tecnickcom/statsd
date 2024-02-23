@@ -1,29 +1,14 @@
 /*
 Package statsd is a simple and efficient StatsD client.
 
+StatsD is a network daemon that listens for statistics and aggregates them to one or more pluggable backend services (e.g., Graphite).
 
-Options
+The statsd package provides options to configure the client, such as the target host/port, sampling rate, and tags.
+To use different options, you can clone the client using the Clone() method.
 
-Use options to configure the Client: target host/port, sampling rate, tags, etc.
+The client's methods buffer metrics, and the buffer is flushed either by the background goroutine (every 100ms by default) or when the buffer is full (1440 bytes by default to avoid IP packet fragmentation).
+You can disable the background goroutine using the FlushPeriod(0) option and disable buffering using the MaxPacketSize(0) option.
 
-Whenever you want to use different options (e.g. other tags, different sampling
-rate), you should use the Clone() method of the Client.
-
-Because when cloning a Client, the same connection is reused so this is way
-cheaper and more efficient than creating another Client using New().
-
-
-Internals
-
-Client's methods buffer metrics. The buffer is flushed when either:
- - the background goroutine flushes the buffer (every 100ms by default)
- - the buffer is full (1440 bytes by default so that IP packets are not
-   fragmented)
-
-The background goroutine can be disabled using the FlushPeriod(0) option.
-
-Buffering can be disabled using the MaxPacketSize(0) option.
-
-StatsD homepage: https://github.com/etsy/statsd
+For more information about StatsD, visit the StatsD homepage: https://github.com/etsy/statsd
 */
 package statsd

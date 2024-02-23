@@ -27,6 +27,7 @@ func New(opts ...Option) (*Client, error) {
 			Network:       "udp",
 		},
 	}
+
 	for _, o := range opts {
 		o(conf)
 	}
@@ -36,13 +37,16 @@ func New(opts ...Option) (*Client, error) {
 		conn:  conn,
 		muted: conf.Client.Muted,
 	}
+
 	if err != nil {
 		c.muted = true
 		return c, err
 	}
+
 	c.rate = conf.Client.Rate
 	c.prefix = conf.Client.Prefix
 	c.tags = joinTags(conf.Conn.TagFormat, conf.Client.Tags)
+
 	return c, nil
 }
 
@@ -60,6 +64,7 @@ func (c *Client) Clone(opts ...Option) *Client {
 			Tags:   splitTags(tf, c.tags),
 		},
 	}
+
 	for _, o := range opts {
 		o(conf)
 	}
@@ -71,7 +76,9 @@ func (c *Client) Clone(opts ...Option) *Client {
 		prefix: conf.Client.Prefix,
 		tags:   joinTags(tf, conf.Client.Tags),
 	}
+
 	clone.conn = c.conn
+
 	return clone
 }
 
@@ -80,6 +87,7 @@ func (c *Client) Count(bucket string, n interface{}) {
 	if c.skip() {
 		return
 	}
+
 	c.conn.metric(c.prefix, bucket, n, "c", c.rate, c.tags)
 }
 
@@ -97,6 +105,7 @@ func (c *Client) Gauge(bucket string, value interface{}) {
 	if c.skip() {
 		return
 	}
+
 	c.conn.gauge(c.prefix, bucket, value, c.tags)
 }
 
@@ -105,6 +114,7 @@ func (c *Client) Timing(bucket string, value interface{}) {
 	if c.skip() {
 		return
 	}
+
 	c.conn.metric(c.prefix, bucket, value, "ms", c.rate, c.tags)
 }
 
@@ -113,6 +123,7 @@ func (c *Client) Histogram(bucket string, value interface{}) {
 	if c.skip() {
 		return
 	}
+
 	c.conn.metric(c.prefix, bucket, value, "h", c.rate, c.tags)
 }
 
@@ -142,6 +153,7 @@ func (c *Client) Unique(bucket string, value string) {
 	if c.skip() {
 		return
 	}
+
 	c.conn.unique(c.prefix, bucket, value, c.tags)
 }
 
@@ -150,6 +162,7 @@ func (c *Client) Flush() {
 	if c.muted {
 		return
 	}
+
 	c.conn.mu.Lock()
 	c.conn.flush(0)
 	c.conn.mu.Unlock()
@@ -161,6 +174,7 @@ func (c *Client) Close() {
 	if c.muted {
 		return
 	}
+
 	c.conn.mu.Lock()
 	c.conn.flush(0)
 	c.conn.handleError(c.conn.w.Close())

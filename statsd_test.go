@@ -1,10 +1,10 @@
+//nolint:paralleltest
 package statsd
 
 import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net"
 	"sync"
 	"testing"
@@ -12,11 +12,10 @@ import (
 )
 
 const (
-	testAddr = ":0"
-	testKey  = "test_key"
+	testAddr  = ":0"
+	testKey   = "test_key"
+	testKey1C = "test_key:1|c"
 )
-
-var testDate = time.Date(2015, 10, 22, 16, 53, 0, 0, time.UTC)
 
 func TestCount(t *testing.T) {
 	testOutput(t, "test_key:5|c", func(c *Client) {
@@ -25,7 +24,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestIncrement(t *testing.T) {
-	testOutput(t, "test_key:1|c", func(c *Client) {
+	testOutput(t, testKey1C, func(c *Client) {
 		c.Increment(testKey)
 	})
 }
@@ -49,6 +48,7 @@ func TestHistogram(t *testing.T) {
 	})
 }
 
+//nolint:goconst
 func TestNumbers(t *testing.T) {
 	testOutput(t,
 		"test_key:1|g\n"+
@@ -84,6 +84,8 @@ func TestNumbers(t *testing.T) {
 
 func TestNewTiming(t *testing.T) {
 	i := 0
+	testDate := time.Date(2015, 10, 22, 16, 53, 0, 0, time.UTC)
+
 	now = func() time.Time {
 		i++
 		switch i {
@@ -97,6 +99,7 @@ func TestNewTiming(t *testing.T) {
 			return testDate.Add(time.Second)
 		}
 	}
+
 	defer func() { now = time.Now }()
 
 	testOutput(t, "test_key:10|ms\ntest_key:1000|ms", func(c *Client) {
@@ -105,6 +108,7 @@ func TestNewTiming(t *testing.T) {
 
 		got := timing.Duration().Nanoseconds()
 		want := int64(100 * time.Millisecond)
+
 		if got != want {
 			t.Errorf("Duration() = %v, want %v", got, want)
 		}
@@ -124,12 +128,14 @@ func TestMute(t *testing.T) {
 		t.Fatal("net.Dial should not be called")
 		return nil, nil
 	}
+
 	defer func() { dialTimeout = net.DialTimeout }()
 
 	c, err := New(Mute(true))
 	if err != nil {
 		t.Errorf("New() = %v", err)
 	}
+
 	c.Increment(testKey)
 	c.Gauge(testKey, 1)
 	c.Timing(testKey, 1)
@@ -142,6 +148,7 @@ func TestMute(t *testing.T) {
 func TestSamplingRateOK(t *testing.T) {
 	testOutput(t, "test_key:3|c|@0.6\ntest_key:4|ms|@0.6", func(c *Client) {
 		randFloat = func() float32 { return 0.5 }
+
 		c.Count(testKey, 3)
 		c.Timing(testKey, 4)
 	}, SampleRate(0.6))
@@ -150,6 +157,7 @@ func TestSamplingRateOK(t *testing.T) {
 func TestSamplingRateKO(t *testing.T) {
 	testOutput(t, "", func(c *Client) {
 		randFloat = func() float32 { return 0.5 }
+
 		c.Count(testKey, 1)
 		c.Timing(testKey, 2)
 	}, SampleRate(0.3))
@@ -162,7 +170,7 @@ func TestPrefix(t *testing.T) {
 }
 
 func TestNilTags(t *testing.T) {
-	testOutput(t, "test_key:1|c", func(c *Client) {
+	testOutput(t, testKey1C, func(c *Client) {
 		c.Increment(testKey)
 	}, TagsFormat(InfluxDB), Tags())
 }
@@ -180,7 +188,7 @@ func TestDatadogTags(t *testing.T) {
 }
 
 func TestNoTagFormat(t *testing.T) {
-	testOutput(t, "test_key:1|c", func(c *Client) {
+	testOutput(t, testKey1C, func(c *Client) {
 		c.Increment(testKey)
 	}, Tags("tag1", "value1", "tag2", "value2"))
 }
@@ -196,16 +204,22 @@ func TestOddTagsArgs(t *testing.T) {
 		}
 	}()
 
+	//nolint:staticcheck
+	// set only one tag to trigger the panic
 	_, _ = New(TagsFormat(InfluxDB), Tags("tag1"))
+
 	t.Fatal("A panic should occur")
 }
 
 func TestErrorHandler(t *testing.T) {
 	errorCount := 0
+
 	testClient(t, func(c *Client) {
 		getBuffer(c).err = errors.New("test error")
+
 		c.Increment(testKey)
 		c.Close()
+
 		if errorCount != 2 {
 			t.Errorf("Wrong error count, got %d, want 2", errorCount)
 		}
@@ -213,6 +227,7 @@ func TestErrorHandler(t *testing.T) {
 		if err == nil {
 			t.Error("Error should not be nil")
 		}
+
 		errorCount++
 	}))
 }
@@ -221,11 +236,14 @@ func TestFlush(t *testing.T) {
 	testClient(t, func(c *Client) {
 		c.Increment(testKey)
 		c.Flush()
+
 		got := getOutput(c)
-		want := "test_key:1|c"
+		want := testKey1C
+
 		if got != want {
 			t.Errorf("Invalid output, got %q, want %q", got, want)
 		}
+
 		c.Close()
 	})
 }
@@ -233,13 +251,18 @@ func TestFlush(t *testing.T) {
 func TestFlushPeriod(t *testing.T) {
 	testClient(t, func(c *Client) {
 		c.Increment(testKey)
+
 		time.Sleep(time.Millisecond)
+
 		c.conn.mu.Lock()
+
 		got := getOutput(c)
-		want := "test_key:1|c"
+		want := testKey1C
+
 		if got != want {
 			t.Errorf("Invalid output, got %q, want %q", got, want)
 		}
+
 		c.conn.mu.Unlock()
 		c.Close()
 	}, FlushPeriod(time.Nanosecond))
@@ -248,18 +271,23 @@ func TestFlushPeriod(t *testing.T) {
 func TestMaxPacketSize(t *testing.T) {
 	testClient(t, func(c *Client) {
 		c.Increment(testKey)
+
 		conn := getBuffer(c)
+
 		got := conn.buf.String()
 		if got != "" {
 			t.Errorf("Output should be empty, got %q", got)
 		}
 
 		c.Increment(testKey)
+
 		got = conn.buf.String()
-		want := "test_key:1|c"
+		want := testKey1C
+
 		if got != want {
 			t.Errorf("Invalid output, got %q, want %q", got, want)
 		}
+
 		conn.buf.Reset()
 		c.Close()
 
@@ -279,9 +307,13 @@ func TestClone(t *testing.T) {
 func TestCloneInherits(t *testing.T) {
 	testOutput(t, "app.test_key:5|c|@0.5|#tag1:value1", func(c *Client) {
 		clone := c.Clone()
+
 		randFloat = func() float32 { return 0.3 }
+
 		clone.Count(testKey, 5)
+
 		randFloat = func() float32 { return 0.8 }
+
 		clone.Count(testKey, 5)
 	},
 		TagsFormat(Datadog),
@@ -312,6 +344,7 @@ func TestClonePrefix(t *testing.T) {
 func TestCloneRate(t *testing.T) {
 	testOutput(t, "", func(c *Client) {
 		randFloat = func() float32 { return 0.8 }
+
 		c.Clone(SampleRate(0.5)).Count(testKey, 5)
 	})
 }
@@ -334,6 +367,7 @@ func TestDialError(t *testing.T) {
 	dialTimeout = func(string, string, time.Duration) (net.Conn, error) {
 		return nil, errors.New("")
 	}
+
 	defer func() { dialTimeout = net.DialTimeout }()
 
 	_, err := New()
@@ -343,14 +377,17 @@ func TestDialError(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	testOutput(t, "test_key:1|c\ntest_key:1|c\ntest_key:1|c", func(c *Client) {
+	testOutput(t, testKey1C+"\n"+testKey1C+"\n"+testKey1C, func(c *Client) {
 		var wg sync.WaitGroup
+
 		wg.Add(1)
 		c.Increment(testKey)
+
 		go func() {
 			c.Increment(testKey)
 			wg.Done()
 		}()
+
 		c.Increment(testKey)
 		wg.Wait()
 	})
@@ -364,6 +401,7 @@ func TestUDPNotListening(t *testing.T) {
 	if c.muted {
 		t.Error("client should not mute when attempting to connect to a non-listening port")
 	}
+
 	if err != nil {
 		t.Error("attempting to connect to a non-listening port should not return an error")
 	}
@@ -374,11 +412,12 @@ type mockClosedUDPConn struct {
 	net.Conn
 }
 
-func (c *mockClosedUDPConn) Write(p []byte) (int, error) {
+func (c *mockClosedUDPConn) Write(_ []byte) (int, error) {
 	c.i++
 	if c.i == 2 {
 		return 0, errors.New("test error")
 	}
+
 	return 0, nil
 }
 
@@ -391,6 +430,8 @@ func mockUDPClosed(string, string, time.Duration) (net.Conn, error) {
 }
 
 func testClient(t *testing.T, f func(*Client), options ...Option) {
+	t.Helper()
+
 	dialTimeout = mockDial
 	defer func() { dialTimeout = net.DialTimeout }()
 
@@ -398,6 +439,7 @@ func testClient(t *testing.T, f func(*Client), options ...Option) {
 		FlushPeriod(0),
 		ErrorHandler(expectNoError(t)),
 	}, options...)
+
 	c, err := New(options...)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -407,6 +449,8 @@ func testClient(t *testing.T, f func(*Client), options ...Option) {
 }
 
 func testOutput(t *testing.T, want string, f func(*Client), options ...Option) {
+	t.Helper()
+
 	testClient(t, func(c *Client) {
 		f(c)
 		c.Close()
@@ -419,6 +463,8 @@ func testOutput(t *testing.T, want string, f func(*Client), options ...Option) {
 }
 
 func expectNoError(t *testing.T) func(error) {
+	t.Helper()
+
 	return func(err error) {
 		t.Errorf("ErrorHandler should not receive an error: %v", err)
 	}
@@ -434,7 +480,8 @@ func (c *testBuffer) Write(p []byte) (int, error) {
 	if c.err != nil {
 		return 0, c.err
 	}
-	return c.buf.Write(p)
+
+	return c.buf.Write(p) //nolint:wrapcheck
 }
 
 func (c *testBuffer) Close() error {
@@ -445,6 +492,7 @@ func getBuffer(c *Client) *testBuffer {
 	if mock, ok := c.conn.w.(*testBuffer); ok {
 		return mock
 	}
+
 	return nil
 }
 
@@ -452,6 +500,7 @@ func getOutput(c *Client) string {
 	if c.conn.w == nil {
 		return ""
 	}
+
 	return getBuffer(c).buf.String()
 }
 
@@ -464,18 +513,24 @@ func TestUDP(t *testing.T) {
 }
 
 func TestTCP(t *testing.T) {
+	t.Parallel()
+
 	testNetwork(t, "tcp")
 }
 
 func testNetwork(t *testing.T, network string) {
+	t.Helper()
+
 	received := make(chan bool)
 	server := newServer(t, network, testAddr, func(p []byte) {
 		s := string(p)
-		if s != "test_key:1|c" {
+		if s != testKey1C {
 			t.Errorf("invalid output: %q", s)
 		}
+
 		received <- true
 	})
+
 	defer server.Close()
 
 	c, err := New(
@@ -486,8 +541,10 @@ func testNetwork(t *testing.T, network string) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
+
 	c.Increment(testKey)
 	c.Close()
+
 	select {
 	case <-time.After(100 * time.Millisecond):
 		t.Error("server received nothing after 100ms")
@@ -502,28 +559,37 @@ type server struct {
 	closed chan bool
 }
 
-func newServer(t testing.TB, network, addr string, f func([]byte)) *server {
-	s := &server{t: t, closed: make(chan bool)}
+//nolint:gocognit,gocyclo,cyclop
+func newServer(tb testing.TB, network, addr string, f func([]byte)) *server {
+	tb.Helper()
+
+	s := &server{t: tb, closed: make(chan bool)}
+
 	switch network {
 	case "udp":
 		laddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
+
 		conn, err := net.ListenUDP("udp", laddr)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
+
 		s.closer = conn
 		s.addr = conn.LocalAddr().String()
+
 		go func() {
 			buf := make([]byte, 1024)
+
 			for {
 				n, err := conn.Read(buf)
 				if err != nil {
 					s.closed <- true
 					return
 				}
+
 				if n > 0 {
 					f(buf[:n])
 				}
@@ -532,10 +598,12 @@ func newServer(t testing.TB, network, addr string, f func([]byte)) *server {
 	case "tcp":
 		ln, err := net.Listen("tcp", addr)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
+
 		s.closer = ln
 		s.addr = ln.Addr().String()
+
 		go func() {
 			for {
 				conn, err := ln.Accept()
@@ -543,18 +611,21 @@ func newServer(t testing.TB, network, addr string, f func([]byte)) *server {
 					s.closed <- true
 					return
 				}
-				p, err := ioutil.ReadAll(conn)
+
+				p, err := io.ReadAll(conn)
 				if err != nil {
-					t.Fatal(err)
+					tb.Fatal(err)
 				}
+
 				if err := conn.Close(); err != nil {
-					t.Fatal(err)
+					tb.Fatal(err)
 				}
+
 				f(p)
 			}
 		}()
 	default:
-		t.Fatalf("Invalid network: %q", network)
+		tb.Fatalf("Invalid network: %q", network)
 	}
 
 	return s
@@ -564,15 +635,18 @@ func (s *server) Close() {
 	if err := s.closer.Close(); err != nil {
 		s.t.Error(err)
 	}
+
 	<-s.closed
 }
 
 func Benchmark(b *testing.B) {
 	serv := newServer(b, "udp", testAddr, func([]byte) {})
+
 	c, err := New(Address(serv.addr), FlushPeriod(0))
 	if err != nil {
 		b.Fatal(err)
 	}
+
 	for i := 0; i < b.N; i++ {
 		c.Increment(testKey)
 		c.Count(testKey, i)
@@ -580,6 +654,7 @@ func Benchmark(b *testing.B) {
 		c.Timing(testKey, i)
 		c.NewTiming().Send(testKey)
 	}
+
 	c.Close()
 	serv.Close()
 }
