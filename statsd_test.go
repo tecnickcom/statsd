@@ -48,7 +48,6 @@ func TestHistogram(t *testing.T) {
 	})
 }
 
-//nolint:goconst
 func TestNumbers(t *testing.T) {
 	testOutput(t,
 		"test_key:1|g\n"+
