@@ -2,7 +2,7 @@ module github.com/tecnickcom/statsd
 
 go 1.22
 
-toolchain go1.22.1
+toolchain go1.22.2
 
 replace github.com/tecnickcom/statsd => ./
 
