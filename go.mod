@@ -4,8 +4,6 @@ go 1.22
 
 toolchain go1.22.2
 
-replace github.com/tecnickcom/statsd => ./
-
 require (
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v1.0.0

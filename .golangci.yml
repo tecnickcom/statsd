@@ -98,7 +98,7 @@ linters:
     - goheader    # Checks is file header matches to pattern [fast: true, auto-fix: false]
     - goimports    # Check import statements are formatted according to the 'goimport' command. Reformat imports in autofix mode. [fast: true, auto-fix: true]
     #- gomnd    # An analyzer to detect magic numbers. [fast: true, auto-fix: false]
-    #- gomoddirectives    # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod. [fast: true, auto-fix: false]
+    - gomoddirectives    # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod. [fast: true, auto-fix: false]
     - gomodguard    # Allow and block list linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations. [fast: true, auto-fix: false]
     - goprintffuncname    # Checks that printf-like functions are named with `f` at the end [fast: true, auto-fix: false]
     - gosec    # (gas): Inspects source code for security problems [fast: false, auto-fix: false]
