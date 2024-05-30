@@ -125,7 +125,7 @@ func TestUnique(t *testing.T) {
 func TestMute(t *testing.T) {
 	dialTimeout = func(string, string, time.Duration) (net.Conn, error) {
 		t.Fatal("net.Dial should not be called")
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	defer func() { dialTimeout = net.DialTimeout }()
