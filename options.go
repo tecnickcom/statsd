@@ -158,7 +158,7 @@ func Tags(tags ...string) Option {
 		}
 
 		newTags := make([]tag, len(tags)/2)
-		for i := 0; i < len(tags)/2; i++ {
+		for i := range len(tags) / 2 {
 			newTags[i] = tag{K: tags[2*i], V: tags[2*i+1]}
 		}
 
