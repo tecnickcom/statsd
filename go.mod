@@ -20,4 +20,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
-retract v2.0.6+incompatible
+retract v2.0.6+incompatible // Published in error - v1 is the current version
