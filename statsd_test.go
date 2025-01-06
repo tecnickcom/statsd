@@ -646,7 +646,7 @@ func Benchmark(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		c.Increment(testKey)
 		c.Count(testKey, i)
 		c.Gauge(testKey, i)
