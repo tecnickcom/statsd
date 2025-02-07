@@ -2,7 +2,7 @@ module github.com/tecnickcom/statsd
 
 go 1.23
 
-toolchain go1.23.5
+toolchain go1.23.6
 
 require (
 	github.com/golang/mock v1.6.0
