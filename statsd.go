@@ -91,10 +91,6 @@ func (c *Client) Count(bucket string, n interface{}) {
 	c.conn.metric(c.prefix, bucket, n, "c", c.rate, c.tags)
 }
 
-func (c *Client) skip() bool {
-	return c.muted || (c.rate != 1 && randFloat() > c.rate)
-}
-
 // Increment increment the given bucket. It is equivalent to Count(bucket, 1).
 func (c *Client) Increment(bucket string) {
 	c.Count(bucket, 1)
@@ -180,4 +176,8 @@ func (c *Client) Close() {
 	c.conn.handleError(c.conn.w.Close())
 	c.conn.closed = true
 	c.conn.mu.Unlock()
+}
+
+func (c *Client) skip() bool {
+	return c.muted || (c.rate != 1 && randFloat() > c.rate)
 }
