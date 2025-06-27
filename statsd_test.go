@@ -194,6 +194,7 @@ func TestNoTagFormat(t *testing.T) {
 
 func TestOddTagsArgs(t *testing.T) {
 	dialTimeout = mockDial
+
 	defer func() { dialTimeout = net.DialTimeout }()
 
 	defer func() {
@@ -394,6 +395,7 @@ func TestConcurrency(t *testing.T) {
 
 func TestUDPNotListening(t *testing.T) {
 	dialTimeout = mockUDPClosed
+
 	defer func() { dialTimeout = net.DialTimeout }()
 
 	c, err := New()
@@ -407,8 +409,9 @@ func TestUDPNotListening(t *testing.T) {
 }
 
 type mockClosedUDPConn struct {
-	i int
 	net.Conn
+
+	i int
 }
 
 func (c *mockClosedUDPConn) Write(_ []byte) (int, error) {
@@ -432,6 +435,7 @@ func testClient(t *testing.T, f func(*Client), options ...Option) {
 	t.Helper()
 
 	dialTimeout = mockDial
+
 	defer func() { dialTimeout = net.DialTimeout }()
 
 	options = append([]Option{
@@ -470,9 +474,10 @@ func expectNoError(t *testing.T) func(error) {
 }
 
 type testBuffer struct {
+	net.Conn
+
 	buf bytes.Buffer
 	err error
-	net.Conn
 }
 
 func (c *testBuffer) Write(p []byte) (int, error) {
@@ -616,7 +621,8 @@ func newServer(tb testing.TB, network, addr string, f func([]byte)) *server {
 					tb.Fatal(err)
 				}
 
-				if err := conn.Close(); err != nil {
+				err = conn.Close()
+				if err != nil {
 					tb.Fatal(err)
 				}
 
@@ -631,7 +637,8 @@ func newServer(tb testing.TB, network, addr string, f func([]byte)) *server {
 }
 
 func (s *server) Close() {
-	if err := s.closer.Close(); err != nil {
+	err := s.closer.Close()
+	if err != nil {
 		s.t.Error(err)
 	}
 

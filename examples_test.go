@@ -150,5 +150,6 @@ func ExampleClient_NewTiming() {
 
 	// Send a timing metric each time the function is run.
 	defer c.NewTiming().Send("homepage.response_time")
+
 	ping("http://example.com/")
 }
