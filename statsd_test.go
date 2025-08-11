@@ -600,7 +600,9 @@ func newServer(tb testing.TB, network, addr string, f func([]byte)) *server {
 			}
 		}()
 	case "tcp":
-		ln, err := net.Listen("tcp", addr)
+		var lc net.ListenConfig
+
+		ln, err := lc.Listen(tb.Context(), "tcp", addr)
 		if err != nil {
 			tb.Fatal(err)
 		}
