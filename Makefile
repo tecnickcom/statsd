@@ -207,8 +207,8 @@ test: ensuretarget
 # Get the go tools
 .PHONY: gotools
 gotools:
-	$(GO) get -tool github.com/jstemmer/go-junit-report/v2@latest
 	$(GO) get -tool go.uber.org/mock/mockgen@latest
+	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
 
 # Update everything
 .PHONY: updateall
@@ -230,7 +230,7 @@ updatelint:
 
 # Update dependencies
 .PHONY: updatemod
-updatemod:
+updatemod: mod
 	$(GO) get -t -u ./... && \
 	$(GO) mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 
