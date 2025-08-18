@@ -4,16 +4,21 @@ go 1.25
 
 toolchain go1.25.0
 
+retract v2.0.6+incompatible // Published in error - v1 is the current version
+
 require (
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 )
 
 require (
-	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sys v0.1.0 // indirect
-	golang.org/x/tools v0.1.1 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	go.uber.org/mock v0.5.2 // indirect
+	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/tools v0.22.0 // indirect
 )
 
-retract v2.0.6+incompatible // Published in error - v1 is the current version
+tool (
+	github.com/jstemmer/go-junit-report/v2
+	go.uber.org/mock/mockgen
+)
