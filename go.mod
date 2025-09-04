@@ -2,7 +2,7 @@ module github.com/tecnickcom/statsd
 
 go 1.25
 
-toolchain go1.25.0
+toolchain go1.25.1
 
 retract v2.0.6+incompatible // Published in error - v1 is the current version
 
