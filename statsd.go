@@ -83,7 +83,7 @@ func (c *Client) Clone(opts ...Option) *Client {
 }
 
 // Count adds n to bucket.
-func (c *Client) Count(bucket string, n interface{}) {
+func (c *Client) Count(bucket string, n any) {
 	if c.skip() {
 		return
 	}
@@ -97,7 +97,7 @@ func (c *Client) Increment(bucket string) {
 }
 
 // Gauge records an absolute value for the given bucket.
-func (c *Client) Gauge(bucket string, value interface{}) {
+func (c *Client) Gauge(bucket string, value any) {
 	if c.skip() {
 		return
 	}
@@ -106,7 +106,7 @@ func (c *Client) Gauge(bucket string, value interface{}) {
 }
 
 // Timing sends a timing value to a bucket.
-func (c *Client) Timing(bucket string, value interface{}) {
+func (c *Client) Timing(bucket string, value any) {
 	if c.skip() {
 		return
 	}
@@ -115,7 +115,7 @@ func (c *Client) Timing(bucket string, value interface{}) {
 }
 
 // Histogram sends an histogram value to a bucket.
-func (c *Client) Histogram(bucket string, value interface{}) {
+func (c *Client) Histogram(bucket string, value any) {
 	if c.skip() {
 		return
 	}

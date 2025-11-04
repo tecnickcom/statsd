@@ -82,7 +82,7 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 	return c, nil
 }
 
-func (c *conn) metric(prefix, bucket string, n interface{}, typ string, rate float32, tags string) {
+func (c *conn) metric(prefix, bucket string, n any, typ string, rate float32, tags string) {
 	c.mu.Lock()
 
 	l := len(c.buf)
@@ -96,7 +96,7 @@ func (c *conn) metric(prefix, bucket string, n interface{}, typ string, rate flo
 	c.mu.Unlock()
 }
 
-func (c *conn) gauge(prefix, bucket string, value interface{}, tags string) {
+func (c *conn) gauge(prefix, bucket string, value any, tags string) {
 	c.mu.Lock()
 
 	l := len(c.buf)
@@ -114,7 +114,7 @@ func (c *conn) gauge(prefix, bucket string, value interface{}, tags string) {
 	c.mu.Unlock()
 }
 
-func (c *conn) appendGauge(value interface{}, tags string) {
+func (c *conn) appendGauge(value any, tags string) {
 	c.appendNumber(value)
 	c.appendType("g")
 	c.closeMetric(tags)
@@ -140,7 +140,7 @@ func (c *conn) appendString(s string) {
 }
 
 //nolint:gocyclo,cyclop
-func (c *conn) appendNumber(v interface{}) {
+func (c *conn) appendNumber(v any) {
 	switch n := v.(type) {
 	case int:
 		c.buf = strconv.AppendInt(c.buf, int64(n), 10)
@@ -170,7 +170,7 @@ func (c *conn) appendNumber(v interface{}) {
 }
 
 //nolint:gocyclo,cyclop
-func isNegative(v interface{}) bool {
+func isNegative(v any) bool {
 	switch n := v.(type) {
 	case int:
 		return n < 0
