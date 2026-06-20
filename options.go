@@ -29,8 +29,6 @@ type connConfig struct {
 
 type joinFn = func([]tag) string
 
-type splitFn = func(string) []tag
-
 // An Option represents an option for a Client. It must be used as an
 // argument to New() or Client.Clone().
 type Option func(*config)
@@ -148,52 +146,54 @@ func TagsFormat(tf TagFormat) Option {
 }
 
 // Tags appends the given tags to the tags sent with every metrics. If a tag
-// already exists, it is replaced.
+// already exists, its value is replaced.
 //
 // The tags must be set as key-value pairs. If the number of tags is not even,
 // Tags panics.
 //
 // If the format of tags have not been set using the TagsFormat option, the tags
 // will be ignored.
-//
-//nolint:gocognit
 func Tags(tags ...string) Option {
 	if len(tags)%2 != 0 {
 		panic("statsd: Tags only accepts an even number of arguments")
 	}
 
 	return Option(func(c *config) {
-		if len(tags) == 0 {
-			return
-		}
-
-		newTags := make([]tag, len(tags)/2)
 		for i := range len(tags) / 2 {
-			newTags[i] = tag{K: tags[2*i], V: tags[2*i+1]}
-		}
-
-		for _, newTag := range newTags {
-			exists := false
-
-			for _, oldTag := range c.Client.Tags {
-				if newTag.K == oldTag.K {
-					exists = true
-					oldTag.V = newTag.V
-				}
-			}
-
-			if !exists {
-				c.Client.Tags = append(c.Client.Tags, tag{
-					K: newTag.K,
-					V: newTag.V,
-				})
-			}
+			c.Client.Tags = upsertTag(c.Client.Tags, tags[2*i], tags[2*i+1])
 		}
 	})
 }
 
 type tag struct {
 	K, V string
+}
+
+// upsertTag sets the value of the tag with the given key, replacing the value
+// in place if the key already exists or appending a new tag otherwise.
+func upsertTag(tags []tag, key, value string) []tag {
+	for i := range tags {
+		if tags[i].K == key {
+			tags[i].V = value
+
+			return tags
+		}
+	}
+
+	return append(tags, tag{K: key, V: value})
+}
+
+// cloneTags returns a copy of the given tags so a cloned Client can amend its
+// tags without affecting its parent.
+func cloneTags(tags []tag) []tag {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	out := make([]tag, len(tags))
+	copy(out, tags)
+
+	return out
 }
 
 func joinTags(tf TagFormat, tags []tag) string {
@@ -204,16 +204,6 @@ func joinTags(tf TagFormat, tags []tag) string {
 	join := joinFuncs(tf)
 
 	return join(tags)
-}
-
-func splitTags(tf TagFormat, tags string) []tag {
-	if len(tags) == 0 || tf == 0 {
-		return nil
-	}
-
-	split := splitFuncs(tf)
-
-	return split(tags)
 }
 
 func joinFuncs(tf TagFormat) joinFn {
@@ -255,35 +245,4 @@ func joinFuncs(tf TagFormat) joinFn {
 	}
 
 	return jfn[tf]
-}
-
-func splitFuncs(tf TagFormat) splitFn {
-	sfn := map[TagFormat]splitFn{
-		InfluxDB: func(s string) []tag {
-			s = s[1:]
-			pairs := strings.Split(s, ",")
-			tags := make([]tag, len(pairs))
-
-			for i, pair := range pairs {
-				kv := strings.Split(pair, "=")
-				tags[i] = tag{K: kv[0], V: kv[1]}
-			}
-
-			return tags
-		},
-		Datadog: func(s string) []tag {
-			s = s[2:]
-			pairs := strings.Split(s, ",")
-			tags := make([]tag, len(pairs))
-
-			for i, pair := range pairs {
-				kv := strings.Split(pair, ":")
-				tags[i] = tag{K: kv[0], V: kv[1]}
-			}
-
-			return tags
-		},
-	}
-
-	return sfn[tf]
 }

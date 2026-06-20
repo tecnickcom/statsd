@@ -4,11 +4,12 @@ import "time"
 
 // A Client represents a StatsD client.
 type Client struct {
-	conn   *conn
-	muted  bool
-	rate   float32
-	prefix string
-	tags   string
+	conn    *conn
+	muted   bool
+	rate    float32
+	prefix  string
+	tagList []tag  // structured tags, used to merge tags when cloning
+	tags    string // tags rendered to the wire format, sent with every metric
 }
 
 // New returns a new Client.
@@ -45,6 +46,7 @@ func New(opts ...Option) (*Client, error) {
 
 	c.rate = conf.Client.Rate
 	c.prefix = conf.Client.Prefix
+	c.tagList = conf.Client.Tags
 	c.tags = joinTags(conf.Conn.TagFormat, conf.Client.Tags)
 
 	return c, nil
@@ -61,7 +63,7 @@ func (c *Client) Clone(opts ...Option) *Client {
 		Client: clientConfig{
 			Rate:   c.rate,
 			Prefix: c.prefix,
-			Tags:   splitTags(tf, c.tags),
+			Tags:   cloneTags(c.tagList),
 		},
 	}
 
@@ -69,15 +71,14 @@ func (c *Client) Clone(opts ...Option) *Client {
 		o(conf)
 	}
 
-	clone := &Client{
-		conn:   c.conn,
-		muted:  c.muted || conf.Client.Muted,
-		rate:   conf.Client.Rate,
-		prefix: conf.Client.Prefix,
-		tags:   joinTags(tf, conf.Client.Tags),
+	return &Client{
+		conn:    c.conn,
+		muted:   c.muted || conf.Client.Muted,
+		rate:    conf.Client.Rate,
+		prefix:  conf.Client.Prefix,
+		tagList: conf.Client.Tags,
+		tags:    joinTags(tf, conf.Client.Tags),
 	}
-
-	return clone
 }
 
 // Count adds n to bucket.

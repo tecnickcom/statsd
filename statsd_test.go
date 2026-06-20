@@ -448,17 +448,39 @@ func TestCloneRate(t *testing.T) {
 }
 
 func TestCloneInfluxDBTags(t *testing.T) {
-	testOutput(t, "test_key,tag1=value1,tag2=value2:5|c", func(c *Client) {
+	testOutput(t, "test_key,tag1=value3,tag2=value2:5|c", func(c *Client) {
 		clone := c.Clone(Tags("tag1", "value3", "tag2", "value2"))
 		clone.Count(testKey, 5)
 	}, TagsFormat(InfluxDB), Tags("tag1", "value1"))
 }
 
 func TestCloneDatadogTags(t *testing.T) {
-	testOutput(t, "test_key:5|c|#tag1:value1,tag2:value2", func(c *Client) {
+	testOutput(t, "test_key:5|c|#tag1:value3,tag2:value2", func(c *Client) {
 		clone := c.Clone(Tags("tag1", "value3", "tag2", "value2"))
 		clone.Count(testKey, 5)
 	}, TagsFormat(Datadog), Tags("tag1", "value1"))
+}
+
+func TestCloneDoesNotAffectParent(t *testing.T) {
+	testOutput(t, "test_key,tag1=value1:1|c", func(c *Client) {
+		// Cloning and overriding a tag must not mutate the parent's tags.
+		_ = c.Clone(Tags("tag1", "value3"))
+		c.Increment(testKey)
+	}, TagsFormat(InfluxDB), Tags("tag1", "value1"))
+}
+
+func TestTagsReplace(t *testing.T) {
+	testOutput(t, "test_key,k=v2:1|c", func(c *Client) {
+		c.Increment(testKey)
+	}, TagsFormat(InfluxDB), Tags("k", "v1", "k", "v2"))
+}
+
+func TestCloneTagValueWithSeparator(t *testing.T) {
+	// A tag value containing the separator used to crash Clone via the old
+	// join/split round-trip; it must now survive cloning untouched.
+	testOutput(t, "test_key,region=us,west:1|c", func(c *Client) {
+		c.Clone().Increment(testKey)
+	}, TagsFormat(InfluxDB), Tags("region", "us,west"))
 }
 
 func TestDialError(t *testing.T) {
