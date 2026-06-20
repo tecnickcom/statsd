@@ -366,6 +366,20 @@ func TestNegativeMaxPacketSize(t *testing.T) {
 	}, MaxPacketSize(-1))
 }
 
+func TestFlushLoopStops(t *testing.T) {
+	testClient(t, func(c *Client) {
+		c.Close()
+
+		// Close waits for the flush goroutine to exit, so its done channel must
+		// already be closed by the time Close returns.
+		select {
+		case <-c.conn.done:
+		default:
+			t.Error("flush goroutine did not stop after Close")
+		}
+	}, FlushPeriod(time.Millisecond))
+}
+
 func TestMaxPacketSize(t *testing.T) {
 	testClient(t, func(c *Client) {
 		c.Increment(testKey)

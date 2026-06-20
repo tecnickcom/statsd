@@ -29,6 +29,11 @@ type conn struct {
 	tagFormat     TagFormat
 	mu            sync.Mutex
 
+	// Channels used to stop the background flush goroutine and wait for its
+	// exit. They are nil when no flush goroutine is running.
+	stop chan struct{}
+	done chan struct{}
+
 	// Fields guarded by the mutex.
 	closed    bool
 	w         io.WriteCloser
@@ -68,28 +73,40 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 	c.buf = make([]byte, 0, c.maxPacketSize+200)
 
 	if c.flushPeriod > 0 {
+		c.stop = make(chan struct{})
+		c.done = make(chan struct{})
+
 		go c.flushLoop()
 	}
 
 	return c, nil
 }
 
-// flushLoop periodically flushes the buffer until the connection is closed.
+// flushLoop periodically flushes the buffer until stopFlushLoop is called.
 func (c *conn) flushLoop() {
 	ticker := time.NewTicker(c.flushPeriod)
 
-	for range ticker.C {
-		c.mu.Lock()
+	defer ticker.Stop()
+	defer close(c.done)
 
-		if c.closed {
-			ticker.Stop()
-			c.mu.Unlock()
-
+	for {
+		select {
+		case <-c.stop:
 			return
+		case <-ticker.C:
+			c.mu.Lock()
+			c.flush(0)
+			c.mu.Unlock()
 		}
+	}
+}
 
-		c.flush(0)
-		c.mu.Unlock()
+// stopFlushLoop stops the background flush goroutine, if any, and waits for it
+// to exit. It must be called without holding the mutex.
+func (c *conn) stopFlushLoop() {
+	if c.flushPeriod > 0 {
+		close(c.stop)
+		<-c.done
 	}
 }
 
@@ -171,73 +188,90 @@ func (c *conn) appendString(s string) {
 	c.buf = append(c.buf, s...)
 }
 
-// appendNumber appends the textual representation of a supported numeric value
-// to the buffer. It returns false (appending nothing) for unsupported types.
+// numKind identifies the kind of a normalized numeric value.
+type numKind uint8
+
+const (
+	numNone numKind = iota // unsupported type
+	numInt
+	numUint
+	numFloat32
+	numFloat64
+)
+
+// number normalizes a supported numeric value into an int64, uint64 or float64
+// together with its kind. The kind is numNone for unsupported types. It is the
+// single source of truth for the set of supported types.
 //
 //nolint:gocyclo,cyclop
-func (c *conn) appendNumber(v any) bool {
+func number(v any) (int64, uint64, float64, numKind) {
 	switch n := v.(type) {
 	case int:
-		c.buf = strconv.AppendInt(c.buf, int64(n), 10)
+		return int64(n), 0, 0, numInt
 	case uint:
-		c.buf = strconv.AppendUint(c.buf, uint64(n), 10)
+		return 0, uint64(n), 0, numUint
 	case int64:
-		c.buf = strconv.AppendInt(c.buf, n, 10)
+		return n, 0, 0, numInt
 	case uint64:
-		c.buf = strconv.AppendUint(c.buf, n, 10)
+		return 0, n, 0, numUint
 	case int32:
-		c.buf = strconv.AppendInt(c.buf, int64(n), 10)
+		return int64(n), 0, 0, numInt
 	case uint32:
-		c.buf = strconv.AppendUint(c.buf, uint64(n), 10)
+		return 0, uint64(n), 0, numUint
 	case int16:
-		c.buf = strconv.AppendInt(c.buf, int64(n), 10)
+		return int64(n), 0, 0, numInt
 	case uint16:
-		c.buf = strconv.AppendUint(c.buf, uint64(n), 10)
+		return 0, uint64(n), 0, numUint
 	case int8:
-		c.buf = strconv.AppendInt(c.buf, int64(n), 10)
+		return int64(n), 0, 0, numInt
 	case uint8:
-		c.buf = strconv.AppendUint(c.buf, uint64(n), 10)
+		return 0, uint64(n), 0, numUint
 	case float64:
-		c.buf = strconv.AppendFloat(c.buf, n, 'f', -1, 64)
+		return 0, 0, n, numFloat64
 	case float32:
-		c.buf = strconv.AppendFloat(c.buf, float64(n), 'f', -1, 32)
+		return 0, 0, float64(n), numFloat32
 	default:
+		return 0, 0, 0, numNone
+	}
+}
+
+// appendNumber appends the textual representation of a supported numeric value
+// to the buffer. It returns false (appending nothing) for unsupported types.
+func (c *conn) appendNumber(v any) bool {
+	i, u, f, kind := number(v)
+
+	switch kind {
+	case numInt:
+		c.buf = strconv.AppendInt(c.buf, i, 10)
+	case numUint:
+		c.buf = strconv.AppendUint(c.buf, u, 10)
+	case numFloat32:
+		c.buf = strconv.AppendFloat(c.buf, f, 'f', -1, 32)
+	case numFloat64:
+		c.buf = strconv.AppendFloat(c.buf, f, 'f', -1, 64)
+	case numNone:
 		return false
 	}
 
 	return true
 }
 
-//nolint:gocyclo,cyclop
+// isNegative reports whether v is a supported numeric value that is negative.
 func isNegative(v any) bool {
-	switch n := v.(type) {
-	case int:
-		return n < 0
-	case uint:
-		return false
-	case int64:
-		return n < 0
-	case uint64:
-		return false
-	case int32:
-		return n < 0
-	case uint32:
-		return false
-	case int16:
-		return n < 0
-	case uint16:
-		return false
-	case int8:
-		return n < 0
-	case uint8:
-		return false
-	case float64:
-		return n < 0
-	case float32:
-		return n < 0
+	i, _, f, kind := number(v)
+
+	negative := false
+
+	switch kind {
+	case numInt:
+		negative = i < 0
+	case numFloat32, numFloat64:
+		negative = f < 0
+	case numUint, numNone:
+		// unsigned integers and unsupported types are never negative
 	}
 
-	return false
+	return negative
 }
 
 func (c *conn) appendBucket(prefix, bucket string, tags string) {

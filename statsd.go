@@ -190,13 +190,21 @@ func (c *Client) Close() {
 
 	c.conn.mu.Lock()
 
-	if !c.conn.closed {
-		c.conn.flush(0)
-		c.conn.handleError(c.conn.w.Close())
-		c.conn.closed = true
+	if c.conn.closed {
+		c.conn.mu.Unlock()
+
+		return
 	}
 
+	c.conn.flush(0)
+	c.conn.handleError(c.conn.w.Close())
+	c.conn.closed = true
+
 	c.conn.mu.Unlock()
+
+	// Stop the background flush goroutine outside the lock to avoid a deadlock
+	// with a flush in progress.
+	c.conn.stopFlushLoop()
 }
 
 func (c *Client) skip() bool {
