@@ -162,6 +162,20 @@ func TestSamplingRateKO(t *testing.T) {
 	}, SampleRate(0.3))
 }
 
+func TestSampleRateClampHigh(t *testing.T) {
+	testOutput(t, testKey1C, func(c *Client) {
+		c.Count(testKey, 1)
+	}, SampleRate(2))
+}
+
+func TestSampleRateClampLow(t *testing.T) {
+	testOutput(t, "", func(c *Client) {
+		randFloat = func() float32 { return 0.5 }
+
+		c.Count(testKey, 1)
+	}, SampleRate(-1))
+}
+
 func TestPrefix(t *testing.T) {
 	testOutput(t, "foo.test_key:1|c", func(c *Client) {
 		c.Increment(testKey)
@@ -266,6 +280,30 @@ func TestFlushPeriod(t *testing.T) {
 		c.conn.mu.Unlock()
 		c.Close()
 	}, FlushPeriod(time.Nanosecond))
+}
+
+func TestNegativeFlushPeriod(t *testing.T) {
+	testClient(t, func(c *Client) {
+		c.Increment(testKey)
+
+		time.Sleep(time.Millisecond)
+
+		c.conn.mu.Lock()
+		got := getOutput(c)
+		c.conn.mu.Unlock()
+
+		if got != "" {
+			t.Errorf("Output should be empty (no background flush), got %q", got)
+		}
+
+		c.Close()
+	}, FlushPeriod(-1))
+}
+
+func TestNegativeMaxPacketSize(t *testing.T) {
+	testOutput(t, testKey1C, func(c *Client) {
+		c.Increment(testKey)
+	}, MaxPacketSize(-1))
 }
 
 func TestMaxPacketSize(t *testing.T) {

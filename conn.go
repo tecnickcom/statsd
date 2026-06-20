@@ -45,6 +45,12 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 		tagFormat:     conf.TagFormat,
 	}
 
+	// A negative maximum packet size is meaningless and would make the buffer
+	// allocation below panic, so treat it like 0 (buffering disabled).
+	if c.maxPacketSize < 0 {
+		c.maxPacketSize = 0
+	}
+
 	if muted {
 		return c, nil
 	}
@@ -61,25 +67,29 @@ func newConn(conf connConfig, muted bool) (*conn, error) {
 	c.buf = make([]byte, 0, c.maxPacketSize+200)
 
 	if c.flushPeriod > 0 {
-		go func() {
-			ticker := time.NewTicker(c.flushPeriod)
-			for range ticker.C {
-				c.mu.Lock()
-
-				if c.closed {
-					ticker.Stop()
-					c.mu.Unlock()
-
-					return
-				}
-
-				c.flush(0)
-				c.mu.Unlock()
-			}
-		}()
+		go c.flushLoop()
 	}
 
 	return c, nil
+}
+
+// flushLoop periodically flushes the buffer until the connection is closed.
+func (c *conn) flushLoop() {
+	ticker := time.NewTicker(c.flushPeriod)
+
+	for range ticker.C {
+		c.mu.Lock()
+
+		if c.closed {
+			ticker.Stop()
+			c.mu.Unlock()
+
+			return
+		}
+
+		c.flush(0)
+		c.mu.Unlock()
+	}
 }
 
 func (c *conn) metric(prefix, bucket string, n any, typ string, rate float32, tags string) {

@@ -65,9 +65,9 @@ func ErrorHandler(h func(error)) Option {
 	})
 }
 
-// FlushPeriod sets how often the Client's buffer is flushed. If p is 0, the
-// goroutine that periodically flush the buffer is not launched and the buffer
-// is only flushed when it is full.
+// FlushPeriod sets how often the Client's buffer is flushed. If p is 0 or
+// negative, the goroutine that periodically flush the buffer is not launched
+// and the buffer is only flushed when it is full.
 //
 // By default, the flush period is 100 ms.  This option is ignored in
 // Client.Clone().
@@ -111,8 +111,18 @@ func Mute(b bool) Option {
 
 // SampleRate sets the sample rate of the Client. It allows sending the metrics
 // less often which can be useful for performance intensive code paths.
+//
+// The rate must be in the [0, 1] range. Values outside this range are clamped:
+// a rate above 1 sends every metric and a negative rate sends none.
 func SampleRate(rate float32) Option {
 	return Option(func(c *config) {
+		switch {
+		case rate < 0:
+			rate = 0
+		case rate > 1:
+			rate = 1
+		}
+
 		c.Client.Rate = rate
 	})
 }
