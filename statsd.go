@@ -158,21 +158,31 @@ func (c *Client) Flush() {
 	}
 
 	c.conn.mu.Lock()
-	c.conn.flush(0)
+
+	if !c.conn.closed {
+		c.conn.flush(0)
+	}
+
 	c.conn.mu.Unlock()
 }
 
 // Close flushes the Client's buffer and releases the associated resources. The
 // Client and all the cloned Clients must not be used afterward.
+//
+// Close is idempotent: calling it more than once is a safe no-op.
 func (c *Client) Close() {
 	if c.muted {
 		return
 	}
 
 	c.conn.mu.Lock()
-	c.conn.flush(0)
-	c.conn.handleError(c.conn.w.Close())
-	c.conn.closed = true
+
+	if !c.conn.closed {
+		c.conn.flush(0)
+		c.conn.handleError(c.conn.w.Close())
+		c.conn.closed = true
+	}
+
 	c.conn.mu.Unlock()
 }
 

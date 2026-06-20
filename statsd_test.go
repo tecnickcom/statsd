@@ -246,6 +246,41 @@ func TestErrorHandler(t *testing.T) {
 	}))
 }
 
+func TestDoubleClose(t *testing.T) {
+	errorCount := 0
+
+	testClient(t, func(c *Client) {
+		getBuffer(c).err = errors.New("test error")
+
+		c.Increment(testKey)
+		c.Close()
+		c.Close() // second Close must be a no-op
+
+		if errorCount != 2 {
+			t.Errorf("Wrong error count, got %d, want 2", errorCount)
+		}
+	}, ErrorHandler(func(error) {
+		errorCount++
+	}))
+}
+
+func TestFlushAfterClose(t *testing.T) {
+	testClient(t, func(c *Client) {
+		c.Increment(testKey)
+		c.Close()
+
+		// Flush after Close must be a safe no-op.
+		c.Flush()
+
+		got := getOutput(c)
+		want := testKey1C
+
+		if got != want {
+			t.Errorf("Invalid output, got %q, want %q", got, want)
+		}
+	})
+}
+
 func TestFlush(t *testing.T) {
 	testClient(t, func(c *Client) {
 		c.Increment(testKey)
