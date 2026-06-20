@@ -16,6 +16,11 @@ The package's documentation is available at: [https://pkg.go.dev/github.com/tecn
 [![Coverage Status](https://coveralls.io/repos/github/tecnickcom/statsd/badge.svg?branch=main)](https://coveralls.io/github/tecnickcom/statsd?branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tecnickcom/statsd)](https://goreportcard.com/report/github.com/tecnickcom/statsd)
 
+[![Sponsor on GitHub](https://img.shields.io/badge/sponsor-github-EA4AAA.svg?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/tecnickcom)
+
+If this project is useful to you, please consider [supporting development via GitHub Sponsors](https://github.com/sponsors/tecnickcom).
+
+
 * **category**    Library
 * **license**     [MIT](https://github.com/tecnickcom/statsd/blob/main/LICENSE)
 * **link**        https://github.com/tecnickcom/statsd
