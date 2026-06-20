@@ -8,7 +8,7 @@ This package is a simple and efficient StatsD client.
 StatsD is a network daemon that listens for statistics and aggregates them to one or more pluggable backend services (e.g., Graphite).
 For more information about StatsD, visit the StatsD homepage: https://github.com/etsy/statsd
 
-The packages documentation is available at: [https://pkg.go.dev/github.com/tecnickcom/statsd](https://pkg.go.dev/github.com/tecnickcom/statsd)
+The package's documentation is available at: [https://pkg.go.dev/github.com/tecnickcom/statsd](https://pkg.go.dev/github.com/tecnickcom/statsd)
 
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/tecnickcom/statsd.svg)](https://pkg.go.dev/github.com/tecnickcom/statsd)   

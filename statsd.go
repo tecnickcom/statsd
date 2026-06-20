@@ -77,8 +77,6 @@ func (c *Client) Clone(opts ...Option) *Client {
 		tags:   joinTags(tf, conf.Client.Tags),
 	}
 
-	clone.conn = c.conn
-
 	return clone
 }
 
@@ -114,7 +112,7 @@ func (c *Client) Timing(bucket string, value any) {
 	c.conn.metric(c.prefix, bucket, value, "ms", c.rate, c.tags)
 }
 
-// Histogram sends an histogram value to a bucket.
+// Histogram sends a histogram value to a bucket.
 func (c *Client) Histogram(bucket string, value any) {
 	if c.skip() {
 		return
@@ -123,7 +121,7 @@ func (c *Client) Histogram(bucket string, value any) {
 	c.conn.metric(c.prefix, bucket, value, "h", c.rate, c.tags)
 }
 
-// A Timing is an helper object that eases sending timing values.
+// A Timing is a helper object that eases sending timing values.
 type Timing struct {
 	start time.Time
 	c     *Client
@@ -164,7 +162,7 @@ func (c *Client) Flush() {
 	c.conn.mu.Unlock()
 }
 
-// Close flushes the Client's buffer and releases the associated ressources. The
+// Close flushes the Client's buffer and releases the associated resources. The
 // Client and all the cloned Clients must not be used afterward.
 func (c *Client) Close() {
 	if c.muted {

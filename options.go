@@ -66,7 +66,7 @@ func ErrorHandler(h func(error)) Option {
 }
 
 // FlushPeriod sets how often the Client's buffer is flushed. If p is 0, the
-// goroutine that periodically flush the buffer is not lauched and the buffer
+// goroutine that periodically flush the buffer is not launched and the buffer
 // is only flushed when it is full.
 //
 // By default, the flush period is 100 ms.  This option is ignored in
@@ -99,7 +99,7 @@ func Network(network string) Option {
 }
 
 // Mute sets whether the Client is muted. All methods of a muted Client do
-// nothing and return immedialtly.
+// nothing and return immediately.
 //
 // This option can be used in Client.Clone() only if the parent Client is not
 // muted. The clones of a muted Client are always muted.
