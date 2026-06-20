@@ -81,6 +81,9 @@ func (c *Client) Clone(opts ...Option) *Client {
 }
 
 // Count adds n to bucket.
+//
+// n must be a numeric type (any signed or unsigned integer or float). Values of
+// any other type are dropped and reported through the ErrorHandler.
 func (c *Client) Count(bucket string, n any) {
 	if c.skip() {
 		return
@@ -95,6 +98,9 @@ func (c *Client) Increment(bucket string) {
 }
 
 // Gauge records an absolute value for the given bucket.
+//
+// value must be a numeric type (any signed or unsigned integer or float).
+// Values of any other type are dropped and reported through the ErrorHandler.
 func (c *Client) Gauge(bucket string, value any) {
 	if c.skip() {
 		return
@@ -104,6 +110,9 @@ func (c *Client) Gauge(bucket string, value any) {
 }
 
 // Timing sends a timing value to a bucket.
+//
+// value must be a numeric type (any signed or unsigned integer or float).
+// Values of any other type are dropped and reported through the ErrorHandler.
 func (c *Client) Timing(bucket string, value any) {
 	if c.skip() {
 		return
@@ -113,6 +122,9 @@ func (c *Client) Timing(bucket string, value any) {
 }
 
 // Histogram sends a histogram value to a bucket.
+//
+// value must be a numeric type (any signed or unsigned integer or float).
+// Values of any other type are dropped and reported through the ErrorHandler.
 func (c *Client) Histogram(bucket string, value any) {
 	if c.skip() {
 		return

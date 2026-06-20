@@ -62,8 +62,7 @@ func TestNumbers(t *testing.T) {
 			"test_key:1|g\n"+
 			"test_key:17.6|g\n"+
 			"test_key:0|g\n"+
-			"test_key:-42.5|g\n"+
-			"test_key:|g",
+			"test_key:-42.5|g",
 		func(c *Client) {
 			c.Gauge(testKey, 1)
 			c.Gauge(testKey, uint(1))
@@ -77,8 +76,34 @@ func TestNumbers(t *testing.T) {
 			c.Gauge(testKey, uint8(1))
 			c.Gauge(testKey, float64(17.6))
 			c.Gauge(testKey, float32(-42.5))
-			c.Gauge(testKey, "invalid")
 		})
+}
+
+func TestUnsupportedType(t *testing.T) {
+	errorCount := 0
+
+	testClient(t, func(c *Client) {
+		// An unsupported value type must not emit a (malformed) metric and must
+		// be reported through the ErrorHandler.
+		c.Gauge(testKey, "invalid")
+		c.Count(testKey, "invalid")
+		c.Close()
+
+		got := getOutput(c)
+		if got != "" {
+			t.Errorf("Output should be empty for unsupported types, got %q", got)
+		}
+
+		if errorCount != 2 {
+			t.Errorf("Wrong error count, got %d, want 2", errorCount)
+		}
+	}, ErrorHandler(func(err error) {
+		if err == nil {
+			t.Error("Error should not be nil")
+		}
+
+		errorCount++
+	}))
 }
 
 func TestNewTiming(t *testing.T) {

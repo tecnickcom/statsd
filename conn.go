@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -98,7 +99,15 @@ func (c *conn) metric(prefix, bucket string, n any, typ string, rate float32, ta
 	l := len(c.buf)
 
 	c.appendBucket(prefix, bucket, tags)
-	c.appendNumber(n)
+
+	if !c.appendNumber(n) {
+		c.buf = c.buf[:l] // roll back the partial metric
+		c.handleError(fmt.Errorf("statsd: unsupported value type %T for bucket %q", n, bucket))
+		c.mu.Unlock()
+
+		return
+	}
+
 	c.appendType(typ)
 	c.appendRate(rate)
 	c.closeMetric(tags)
@@ -115,19 +124,32 @@ func (c *conn) gauge(prefix, bucket string, value any, tags string) {
 	// https://github.com/etsy/statsd/blob/master/docs/metric_types.md#gauges
 	if isNegative(value) {
 		c.appendBucket(prefix, bucket, tags)
-		c.appendGauge(0, tags)
+		_ = c.appendGauge(0, tags) // 0 is always a supported value
 	}
 
 	c.appendBucket(prefix, bucket, tags)
-	c.appendGauge(value, tags)
+
+	if !c.appendGauge(value, tags) {
+		c.buf = c.buf[:l] // roll back the partial metric
+		c.handleError(fmt.Errorf("statsd: unsupported value type %T for bucket %q", value, bucket))
+		c.mu.Unlock()
+
+		return
+	}
+
 	c.flushIfBufferFull(l)
 	c.mu.Unlock()
 }
 
-func (c *conn) appendGauge(value any, tags string) {
-	c.appendNumber(value)
+func (c *conn) appendGauge(value any, tags string) bool {
+	if !c.appendNumber(value) {
+		return false
+	}
+
 	c.appendType("g")
 	c.closeMetric(tags)
+
+	return true
 }
 
 func (c *conn) unique(prefix, bucket string, value string, tags string) {
@@ -149,8 +171,11 @@ func (c *conn) appendString(s string) {
 	c.buf = append(c.buf, s...)
 }
 
+// appendNumber appends the textual representation of a supported numeric value
+// to the buffer. It returns false (appending nothing) for unsupported types.
+//
 //nolint:gocyclo,cyclop
-func (c *conn) appendNumber(v any) {
+func (c *conn) appendNumber(v any) bool {
 	switch n := v.(type) {
 	case int:
 		c.buf = strconv.AppendInt(c.buf, int64(n), 10)
@@ -176,7 +201,11 @@ func (c *conn) appendNumber(v any) {
 		c.buf = strconv.AppendFloat(c.buf, n, 'f', -1, 64)
 	case float32:
 		c.buf = strconv.AppendFloat(c.buf, float64(n), 'f', -1, 32)
+	default:
+		return false
 	}
+
+	return true
 }
 
 //nolint:gocyclo,cyclop
