@@ -29,10 +29,10 @@ VERSION=$(shell cat VERSION)
 RELEASE=$(shell cat RELEASE)
 
 # Current directory
-CURRENTDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+CURRENTDIR=$(CURDIR)/
 
 # Target directory
-TARGETDIR=$(CURRENTDIR)target
+TARGETDIR=target
 
 # Directory where to store binary utility tools
 BINUTIL=$(TARGETDIR)/binutil
@@ -46,7 +46,7 @@ endif
 # GO lang path
 ifeq ($(GOPATH),)
 	# extract the GOPATH
-	GOPATH=$(firstword $(subst /src/, ,$(CURRENTDIR)))
+	GOPATH=$(shell echo "$(CURDIR)" | sed 's|/src/.*||')
 endif
 
 # Add the GO binary dir in the PATH
@@ -61,11 +61,11 @@ ifeq ($(DOCKER),)
 endif
 
 # Common commands
-GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
+GO=GOPATH="$(GOPATH)" GOPRIVATE=$(CVSPATH) $(shell which go)
 GOVERSION=${shell go version | grep -Eo '(go[0-9]+.[0-9]+)'}
 GOFMT=$(shell which gofmt)
 GOTEST=$(GO) test
-GODOC=GOPATH=$(GOPATH) $(shell which godoc)
+GODOC=GOPATH="$(GOPATH)" $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
 GOLANGCILINTVERSION=v2.12.2
 
@@ -79,7 +79,7 @@ GOPKGS=$(shell $(GO) list $(SRCDIR)/...)
 ifeq ($(strip $(DEVMODE)),LOCAL)
 	TESTEXTRACMD=&& $(GO) tool cover -func=$(TARGETDIR)/report/coverage.out
 else
-	TESTEXTRACMD=2>&1 | tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > $(TARGETDIR)/test/report.xml); test $${PIPESTATUS[0]} -eq 0
+	TESTEXTRACMD=2>&1 | tee >(PATH="$(GOPATH)/bin:$(PATH)" go-junit-report > $(TARGETDIR)/test/report.xml); test $${PIPESTATUS[0]} -eq 0
 endif
 
 
@@ -129,55 +129,55 @@ x:
 # Remove any build artifact
 .PHONY: clean
 clean:
-	rm -rf $(TARGETDIR)
+	rm -rf "$(TARGETDIR)"
 
 # Generate the coverage report
 .PHONY: coverage
 coverage: ensuretarget
-	$(GO) tool cover -html=$(TARGETDIR)/report/coverage.out -o $(TARGETDIR)/report/coverage.html
+	$(GO) tool cover -html="$(TARGETDIR)/report/coverage.out" -o "$(TARGETDIR)/report/coverage.html"
 
 # Build everything inside a Docker container
 .PHONY: dbuild
 dbuild: dockerdev
-	@mkdir -p $(TARGETDIR)
-	@rm -rf $(TARGETDIR)/*
-	@echo 0 > $(TARGETDIR)/make.exit
-	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' $(CURRENTDIR)dockerbuild.sh
+	@mkdir -p "$(TARGETDIR)"
+	@rm -rf "$(TARGETDIR)/"*
+	@echo 0 > "$(TARGETDIR)/make.exit"
+	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' "$(CURRENTDIR)dockerbuild.sh"
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl --silent --show-error --fail --location "https://golangci-lint.run/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
+	curl --silent --show-error --fail --location "https://golangci-lint.run/install.sh" | sh -s -- -b "$(BINUTIL)" $(GOLANGCILINTVERSION)
 
 # Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
-	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+	$(DOCKER) build --pull --tag "${LCVENDOR}/dev_${PROJECT}" --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 # Create the trget directories if missing
 .PHONY: ensuretarget
 ensuretarget:
-	@mkdir -p $(TARGETDIR)/test
-	@mkdir -p $(TARGETDIR)/report
-	@mkdir -p $(TARGETDIR)/binutil
+	@mkdir -p "$(TARGETDIR)/test"
+	@mkdir -p "$(TARGETDIR)/report"
+	@mkdir -p "$(TARGETDIR)/binutil"
 
 # Format the source code
 .PHONY: format
 format:
-	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
+	@find "$(SRCDIR)" -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
 
 # Generate test mocks
 .PHONY: generate
 generate:
-	@find $(SRCDIR) -type f -name "*mock_test.go" -exec rm {} \;
+	@find "$(SRCDIR)" -type f -name "*mock_test.go" -exec rm {} \;
 	$(GO) generate $(GOPKGS)
 
 # Execute multiple linter tools
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 $(SRCDIR)/...
+	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 "$(SRCDIR)/..."
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 # Download dependencies
