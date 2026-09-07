@@ -67,6 +67,9 @@ endif
 
 # Common commands
 GO=GOPATH="$(GOPATH)" $(shell which go)
+# Commands for the tools module. It requires a newer Go than this library, so
+# it selects its own toolchain regardless of the GOTOOLCHAIN in the environment.
+GOTOOLSMOD=GOTOOLCHAIN=auto $(GO) -C "$(GOTOOLSDIR)"
 GOVERSION=${shell go version | grep -Eo '(go[0-9]+.[0-9]+)'}
 GOFMT=$(shell which gofmt)
 GOTEST=$(GO) test
@@ -201,7 +204,7 @@ modcheck:
 # Reports what "go mod tidy" would change and fails if anything would, without
 # writing to go.mod or go.sum.
 	$(GO) mod tidy -diff -compat=$(shell sed -n -E 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod)
-	$(GO) -C "$(GOTOOLSDIR)" mod tidy -diff
+	$(GOTOOLSMOD) mod tidy -diff
 
 # Run all tests and static analysis tools
 .PHONY: qa
@@ -231,7 +234,7 @@ test: ensuretarget
 # Get the go tools
 .PHONY: gotools
 gotools: ensuretarget
-	GOBIN="$(CURDIR)/$(BINUTIL)" $(GO) -C "$(GOTOOLSDIR)" install tool
+	GOBIN="$(CURDIR)/$(BINUTIL)" $(GOTOOLSMOD) install tool
 
 # Update everything
 .PHONY: updateall
@@ -256,8 +259,8 @@ updatelint:
 updatemod: mod
 	$(GO) get -t -u ./... && \
 	$(GO) mod tidy -compat=$(shell sed -n -E 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod)
-	$(GO) -C "$(GOTOOLSDIR)" get -u tool && \
-	$(GO) -C "$(GOTOOLSDIR)" mod tidy
+	$(GOTOOLSMOD) get -u tool && \
+	$(GOTOOLSMOD) mod tidy
 
 # Increase the patch number in the VERSION file
 .PHONY: versionup
