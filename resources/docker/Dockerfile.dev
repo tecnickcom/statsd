@@ -1,3 +1,2 @@
 FROM golang:1.27
-ENV PATH=/root/.local/bin:$PATH
 HEALTHCHECK CMD go version || exit 1

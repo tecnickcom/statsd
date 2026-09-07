@@ -11,47 +11,65 @@ on:
 permissions:
   contents: read
 
+env:
+  # Go version whose test run publishes the coverage report.
+  COVERAGE_GO_VERSION: '1.27.x'
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Latest patch release of each supported Go minor version.
+        go: ['1.24.x', '1.27.x']
     steps:
       - name: checkout repository
         uses: actions/checkout@v7
       - name: setup go build environment
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version: ${{ matrix.go }}
           check-latest: true
       - name: linter
         run: make mod deps linter GOPATH=$(go env GOPATH)
+      - name: go.mod and go.sum are tidy
+        run: make modcheck GOPATH=$(go env GOPATH)
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.24.x', '1.27.x']
     steps:
       - name: checkout repository
         uses: actions/checkout@v7
       - name: setup go build environment
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version: ${{ matrix.go }}
           check-latest: true
       - name: dependency cache
         uses: actions/cache@v6
         with:
           path: $(go env GOPATH)/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-${{ matrix.go }}-
       - name: unit tests
         run: make mod deps test GOPATH=$(go env GOPATH)
       - name: coverage report
+        if: matrix.go == env.COVERAGE_GO_VERSION
         uses: coverallsapp/github-action@v2
         with:
           file: target/report/coverage.out
           format: golang
       - name: hash go files
+        if: matrix.go == env.COVERAGE_GO_VERSION
         id: go_hash
         run: echo "value=${{ hashFiles('**/*.go','!vendor/**') }}" >>"$GITHUB_OUTPUT"
       - name: cache coverage
+        if: matrix.go == env.COVERAGE_GO_VERSION
         id: cover_cache
         uses: actions/cache@v6
         with:

@@ -18,8 +18,6 @@ set -e -u +x
 : ${CVSPATH:=project}
 : ${VENDOR:=vendor}
 : ${PROJECT:=project}
-: ${SSH_PRIVATE_KEY:=$(cat ~/.ssh/id_rsa || cat ~/.ssh/id_ed25519)}
-: ${SSH_PUBLIC_KEY:=$(cat ~/.ssh/id_rsa.pub || cat ~/.ssh/id_ed25519.pub)}
 
 # make target to execute
 : ${MAKETARGET:=all}
@@ -39,23 +37,10 @@ PRJPATH=/root/src/${CVSPATH}/${PROJECT}
 cat > Dockerfile.test <<- EOM
 FROM ${DOCKERDEV}
 ENV PATH=/usr/local/go/bin:$PATH
-ARG SSH_PRIVATE_KEY=""
-ARG SSH_PUBLIC_KEY=""
 RUN \\
-mkdir -p /root/.ssh \\
-&& echo "\${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa \\
-&& echo "\${SSH_PUBLIC_KEY}" > /root/.ssh/id_rsa.pub \\
-&& echo "Host *" >> /root/.ssh/config \\
-&& echo "    StrictHostKeyChecking no" >> /root/.ssh/config \\
-&& echo "    GlobalKnownHostsFile  /dev/null" >> /root/.ssh/config \\
-&& echo "    UserKnownHostsFile    /dev/null" >> /root/.ssh/config \\
-&& chmod 600 /root/.ssh/id_rsa \\
-&& chmod 644 /root/.ssh/id_rsa.pub \\
-&& echo "[user]" >> /root/.gitconfig \\
+echo "[user]" >> /root/.gitconfig \\
 && echo "	email = godev@example.com" >> /root/.gitconfig \\
 && echo "	name = godevlocaltestuser" >> /root/.gitconfig \\
-&& echo "[url \"ssh://git@${CVSPATH}\"]" >> /root/.gitconfig \\
-&& echo "	insteadOf = https://${CVSPATH}" >> /root/.gitconfig \\
 && mkdir -p ${PRJPATH}
 ADD ./ ${PRJPATH}
 WORKDIR ${PRJPATH}
@@ -66,7 +51,7 @@ EOM
 DOCKER_IMAGE_NAME=${VENDOR}/build_${PROJECT}
 
 # Build the Docker image
-docker build --build-arg SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY}" --build-arg SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY}" --no-cache --tag ${DOCKER_IMAGE_NAME} --file Dockerfile.test .
+docker build --no-cache --tag ${DOCKER_IMAGE_NAME} --file Dockerfile.test .
 
 # Start a container using the newly created Docker image
 CONTAINER_ID=$(docker run -d ${DOCKER_IMAGE_NAME})
