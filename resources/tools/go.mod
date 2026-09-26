@@ -3,7 +3,7 @@
 // Installed into target/binutil by "make gotools".
 module github.com/tecnickcom/statsd/resources/tools
 
-go 1.25.0
+go 1.26.0
 
 toolchain go1.27.1
 
@@ -15,7 +15,7 @@ tool (
 require (
 	github.com/jstemmer/go-junit-report/v2 v2.1.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
-	golang.org/x/mod v0.40.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/tools v0.50.0 // indirect
 )
