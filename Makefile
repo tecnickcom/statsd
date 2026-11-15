@@ -97,36 +97,17 @@ endif
 # Display general help about this command
 .PHONY: help
 help:
-	@echo ""
-	@echo "$(PROJECT) Makefile."
-	@echo "GOPATH=$(GOPATH)"
-	@echo "The following commands are available:"
-	@echo ""
-	@echo "  make clean      : Remove any build artifact"
-	@echo "  make coverage   : Generate the coverage report"
-	@echo "  make dbuild     : Build everything inside a Docker container"
-	@echo "  make deps       : Get dependencies"
-	@echo "  make format     : Format the source code"
-	@echo "  make generate   : Generate go code automatically"
-	@echo "  make linter     : Check code against multiple linters"
-	@echo "  make mod        : Download dependencies"
-	@echo "  make modcheck   : Check that go.mod and go.sum are tidy"
-	@echo "  make qa         : Run all tests and static analysis tools"
-	@echo "  make tag        : Tag the Git repository"
-	@echo "  make test       : Run unit tests"
-	@echo "  make updateall  : Update everything"
-	@echo "  make updatego   : Update Go version"
-	@echo "  make updatelint : Update golangci-lint version"
-	@echo "  make updatemod  : Update dependencies"
-	@echo "  make versionup  : Increase the patch number in the VERSION file"
-	@echo ""
-	@echo "Use DEVMODE=LOCAL for human friendly output."
-	@echo ""
-	@echo "To test and build everything from scratch:"
-	@echo "    DEVMODE=LOCAL make format clean mod deps generate qa"
-	@echo "or use the shortcut:"
-	@echo "    make x"
-	@echo ""
+	@if [ -t 1 ] && [ -z "$${NO_COLOR:-}" ]; then \
+		B=$$(printf '\033[1m'); C=$$(printf '\033[36m'); Y=$$(printf '\033[33m'); D=$$(printf '\033[2m'); R=$$(printf '\033[0m'); \
+	else \
+		B=''; C=''; Y=''; D=''; R=''; \
+	fi; \
+	printf "\n%s%s%s %s(v%s)%s\n" "$$B" "$(PROJECT)" "$$R" "$$D" "$(VERSION)" "$$R"; \
+	printf "%sGOPATH=%s%s\n" "$$D" "$(GOPATH)" "$$R"; \
+	printf "\n%sUsage:%s make %s<target>%s\n\n" "$$Y" "$$R" "$$C" "$$R"; \
+	printf "%sTargets:%s\n" "$$Y" "$$R"; \
+	awk -v c="$$C" -v r="$$R" '/^## /{desc=substr($$0,4)} /^\.PHONY:/{if(NF>1){if(desc){n++; t[n]=$$2; d[n]=desc; if(length($$2)>w) w=length($$2)} desc=""}} END{fmt="  %s%-" w "s%s  %s\n"; for(i=1;i<=n;i++) printf fmt,c,t[i],r,d[i]}' Makefile; \
+	printf "\n%sTo test and build everything from scratch:%s make %sx%s\n\n" "$$D" "$$R" "$$C" "$$R"
 
 # Alias for help target
 all: help
@@ -136,17 +117,17 @@ all: help
 x:
 	DEVMODE=LOCAL $(MAKE) format clean mod deps generate qa
 
-# Remove any build artifact
+## Remove any build artifact
 .PHONY: clean
 clean:
 	rm -rf "$(TARGETDIR)"
 
-# Generate the coverage report
+## Generate the coverage report
 .PHONY: coverage
 coverage: ensuretarget
 	$(GO) tool cover -html="$(TARGETDIR)/report/coverage.out" -o "$(TARGETDIR)/report/coverage.html"
 
-# Build everything inside a Docker container
+## Build everything inside a Docker container
 .PHONY: dbuild
 dbuild: dockerdev
 	@mkdir -p "$(TARGETDIR)"
@@ -155,42 +136,42 @@ dbuild: dockerdev
 	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' "$(CURRENTDIR)dockerbuild.sh"
 	@exit `cat $(TARGETDIR)/make.exit`
 
-# Get the test dependencies
+## Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
 	curl --silent --show-error --fail --location "https://golangci-lint.run/install.sh" | sh -s -- -b "$(BINUTIL)" $(GOLANGCILINTVERSION)
 
-# Build a base development Docker image
+## Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
 	$(DOCKER) build --pull --tag "${LCVENDOR}/dev_${PROJECT}" --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
-# Create the trget directories if missing
+## Create the trget directories if missing
 .PHONY: ensuretarget
 ensuretarget:
 	@mkdir -p "$(TARGETDIR)/test"
 	@mkdir -p "$(TARGETDIR)/report"
 	@mkdir -p "$(TARGETDIR)/binutil"
 
-# Format the source code
+## Format the source code
 .PHONY: format
 format:
 	@find "$(SRCDIR)" -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
 
-# Generate test mocks
+## Generate test mocks
 .PHONY: generate
 generate:
 	@find "$(SRCDIR)" -type f -name "*mock_test.go" -exec rm {} \;
 	$(GO) generate $(GOPKGS)
 
-# Execute multiple linter tools
+## Execute multiple linter tools
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
 	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 "$(SRCDIR)/..."
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
-# Download dependencies
+## Download dependencies
 .PHONY: mod
 mod: gotools
 # Without arguments this downloads the modules required to build and test this
@@ -198,7 +179,7 @@ mod: gotools
 # go.sum entries for modules no package here reaches.
 	$(GO) mod download
 
-# Check that go.mod and go.sum are tidy
+## Check that go.mod and go.sum are tidy
 .PHONY: modcheck
 modcheck:
 # Reports what "go mod tidy" would change and fails if anything would, without
@@ -206,17 +187,17 @@ modcheck:
 	$(GO) mod tidy -diff -compat=$(shell sed -n -E 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod)
 	$(GOTOOLSMOD) mod tidy -diff
 
-# Run all tests and static analysis tools
+## Run all tests and static analysis tools
 .PHONY: qa
 qa: linter test coverage
 
-# Tag the Git repository
+## Tag the Git repository
 .PHONY: tag
 tag:
 	git tag -a "v$(VERSION)" -m "Version $(VERSION)" && \
 	git push origin --tags
 
-# Run the unit tests
+## Run the unit tests
 .PHONY: test
 test: ensuretarget
 	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
@@ -231,16 +212,16 @@ test: ensuretarget
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
 
-# Get the go tools
+## Get the go tools
 .PHONY: gotools
 gotools: ensuretarget
 	GOBIN="$(CURDIR)/$(BINUTIL)" $(GOTOOLSMOD) install tool
 
-# Update everything
+## Update everything
 .PHONY: updateall
 updateall: updatego updatelint updatemod
 
-# Update go version
+## Update go version
 .PHONY: updatego
 updatego:
 	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+'))
@@ -248,13 +229,13 @@ updatego:
 # deliberately: it is not bumped here. Only the toolchain is updated.
 	sed $(SEDINPLACE) "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod "$(GOTOOLSDIR)/go.mod"
 
-# Update linter version
+## Update linter version
 .PHONY: updatelint
 updatelint:
 	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | sed -n 's/.*<title>Release \(v[0-9]*\.[0-9]*\.[0-9]*\).*/\1/p'))
 	sed $(SEDINPLACE) "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
 
-# Update dependencies
+## Update dependencies
 .PHONY: updatemod
 updatemod: mod
 	$(GO) get -t -u ./... && \
@@ -262,7 +243,7 @@ updatemod: mod
 	$(GOTOOLSMOD) get -u tool && \
 	$(GOTOOLSMOD) mod tidy
 
-# Increase the patch number in the VERSION file
+## Increase the patch number in the VERSION file
 .PHONY: versionup
 versionup:
 	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
